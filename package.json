@@ -1,6 +1,6 @@
 {
   "author": "Andreas Monitzer <metalab@monitzer.com>",
-  "name": "qr-validate",
+  "name": "qr-signing",
   "version": "0.1.0",
   "scripts": {
     "build": "rimraf dist pkg && webpack",
