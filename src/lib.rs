@@ -1,4 +1,3 @@
-use js_sys::{Array, Uint8Array};
 use wasm_bindgen::prelude::*;
 use web_sys::console;
 
@@ -33,7 +32,11 @@ pub fn main_js() -> Result<(), JsValue> {
                     let public_key = crypto::export_public_key(&subtle, &key_pair)
                         .await
                         .expect("Failed exporting public key");
-                    console::log_1(Uint8Array::new(public_key.as_ref()).as_ref());
+                    let private_key = crypto::export_private_key(&subtle, &key_pair)
+                        .await
+                        .expect("Failed exporting private key");
+                    console::log_2(&JsValue::from_str("PUBLIC:"), public_key.as_ref());
+                    console::log_2(&JsValue::from_str("PRIVATE:"), private_key.as_ref());
                 }
                 Err(err) => {
                     console::error_2(&JsValue::from_str("Failed generating keypair:"), &err);

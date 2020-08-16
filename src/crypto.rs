@@ -1,4 +1,4 @@
-use js_sys::{Array, ArrayBuffer, Reflect};
+use js_sys::{Array, Object, Reflect};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::JsFuture;
@@ -33,10 +33,21 @@ pub async fn generate_keypair(subtle: &SubtleCrypto) -> Result<CryptoKeyPair, Js
 pub async fn export_public_key(
     subtle: &SubtleCrypto,
     key_pair: &CryptoKeyPair,
-) -> Result<ArrayBuffer, JsValue> {
+) -> Result<Object, JsValue> {
     let public_key: CryptoKey =
         Reflect::get(&key_pair, &JsValue::from_str("publicKey"))?.unchecked_into();
-    let public_key_data = JsFuture::from(subtle.export_key("spki", &public_key)?).await?;
+    let public_key_data = JsFuture::from(subtle.export_key("jwk", &public_key)?).await?;
 
     Ok(public_key_data.unchecked_into())
+}
+
+pub async fn export_private_key(
+    subtle: &SubtleCrypto,
+    key_pair: &CryptoKeyPair,
+) -> Result<Object, JsValue> {
+    let private_key: CryptoKey =
+        Reflect::get(&key_pair, &JsValue::from_str("privateKey"))?.unchecked_into();
+    let private_key_data = JsFuture::from(subtle.export_key("jwk", &private_key)?).await?;
+
+    Ok(private_key_data.unchecked_into())
 }
