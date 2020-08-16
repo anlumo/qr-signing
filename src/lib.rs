@@ -1,12 +1,13 @@
-use js_sys::Uint8Array;
+use js_sys::{Array, Uint8Array};
 use std::cell::RefCell;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-use web_sys::{console, CryptoKeyPair, Event};
+use web_sys::{console, Blob, CryptoKeyPair, Event, Url};
 
 mod html5_qrcode;
 use html5_qrcode::Html5QrcodeScanner;
 mod crypto;
+mod qr_generator;
 
 thread_local! {
     static SCANNER: Html5QrcodeScanner = html5_qrcode::Html5QrcodeScanner::new(
@@ -64,7 +65,7 @@ pub fn main_js() -> Result<(), JsValue> {
                 let input: web_sys::HtmlInputElement = input.unchecked_into();
                 let text = input.value();
                 wasm_bindgen_futures::spawn_local(async move {
-                    sign_text(&text).await;
+                    sign_text(&text).await.expect("Failed signing");
                 });
             }
             false
@@ -104,7 +105,7 @@ async fn generate_keypair() {
     }
 }
 
-async fn sign_text(text: &str) {
+async fn sign_text(text: &str) -> Result<(), JsValue> {
     let subtle = web_sys::window()
         .unwrap()
         .crypto()
@@ -117,9 +118,34 @@ async fn sign_text(text: &str) {
                 console::error_1(&err);
             }
             Ok(data) => {
-                let array = Uint8Array::new(data.as_ref());
-                console::log_1(array.as_ref());
+                let mut array = Uint8Array::new(data.as_ref()).to_vec(); // always 132 bytes
+                array.extend_from_slice(text.as_bytes()); // append original text
+                
+                let svg = qr_generator::encode_data(&array).expect("Text too long");
+
+                let mut options = web_sys::BlobPropertyBag::new();
+                options.type_("image/svg+xml");
+                let blob = Blob::new_with_str_sequence_and_options(
+                    &Array::of1(&JsValue::from_str(&svg)),
+                    &options,
+                )?;
+
+                let blob_url = Url::create_object_url_with_blob(&blob)?;
+
+                let a: web_sys::HtmlAnchorElement = web_sys::window()
+                    .unwrap()
+                    .document()
+                    .unwrap()
+                    .create_element("A")
+                    .unwrap()
+                    .unchecked_into();
+                a.set_href(&blob_url);
+                a.set_download("signed_qr.svg");
+                a.click();
+
+                Url::revoke_object_url(&blob_url)?;
             }
         }
     }
+    Ok(())
 }

@@ -20,6 +20,7 @@ wee_alloc = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 js-sys = "0.3"
 wasm-bindgen-futures = "0.4"
+qrcodegen = "1.6"
 
 [dependencies.web-sys]
 version = "0.3"
@@ -29,12 +30,16 @@ features = [
     "Document",
     "Element",
     "HtmlInputElement",
+    "HtmlAnchorElement",
     "Event",
     "EventTarget",
     "Crypto",
     "CryptoKey",
     "CryptoKeyPair",
     "SubtleCrypto",
+    "Blob",
+    "BlobPropertyBag",
+    "Url",
 ]
 
 [target."cfg(debug_assertions)".dependencies]
