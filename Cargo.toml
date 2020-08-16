@@ -26,6 +26,11 @@ version = "0.3"
 features = [
     "console",
     "Window",
+    "Document",
+    "Element",
+    "HtmlInputElement",
+    "Event",
+    "EventTarget",
     "Crypto",
     "CryptoKey",
     "CryptoKeyPair",

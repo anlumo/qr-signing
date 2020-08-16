@@ -5,13 +5,32 @@
   <meta charset="UTF-8">
   <title>QR Code Validator</title>
   <style>
+    aside {
+      margin: 20px;
+    }
+
     #reader {
       width: 100%;
+      margin-top: 20px;
     }
   </style>
 </head>
 
 <body>
+  <aside>
+    <button id="generate">Generate Key Pair</button>
+    <button id="export_private">Export Private Key</button>
+    <button id="export_public">Export Public Key</button>
+    <button id="import_private">Import Private Key</button>
+    <button id="import_public">Export Public Key</button>
+  </aside>
+  <section>
+    <form id="sign">
+      <label for="text">Text to sign:</label>
+      <input id="text" len="200">
+      <button type="submit">Sign</button>
+    </form>
+  </section>
   <div id="reader"></div>
   <script src="html5-qrcode.min.js"></script>
   <script src="index.js"></script>
