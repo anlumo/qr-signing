@@ -55,12 +55,9 @@ pub async fn export_key_raw(
 
 pub async fn sign(
     subtle: &SubtleCrypto,
-    key_pair: &CryptoKeyPair,
+    private_key: &CryptoKey,
     text: &str,
 ) -> Result<ArrayBuffer, JsValue> {
-    let private_key: CryptoKey =
-        Reflect::get(&key_pair, &JsValue::from_str("privateKey"))?.unchecked_into();
-
     let mut text = text.to_owned();
 
     let signed_bytes = JsFuture::from(

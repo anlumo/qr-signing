@@ -1,8 +1,10 @@
 use crate::{crypto, qr_generator::encode_data};
 use js_sys::Reflect;
+use std::io::Write;
 use wasm_bindgen::{JsCast, JsValue};
-use web_sys::CryptoKey;
+use web_sys::{CryptoKey, Url};
 use yew::prelude::*;
+use zip::{write::FileOptions, ZipWriter};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 enum AppKey {
@@ -29,6 +31,7 @@ pub struct Main {
     key: AppKey,
     qr_key: NodeRef,
     open_file: NodeRef,
+    open_text: NodeRef,
     public_hash: Option<String>,
 }
 
@@ -39,6 +42,8 @@ pub enum Msg {
     KeyPairSelected,
     SetKeyPair(CryptoKey, CryptoKey),
     SetPublicHash([u8; 32]),
+    Sign,
+    TextFileSelected,
 }
 
 fn subtle() -> web_sys::SubtleCrypto {
@@ -59,6 +64,7 @@ impl Component for Main {
             key: AppKey::None,
             qr_key: NodeRef::default(),
             open_file: NodeRef::default(),
+            open_text: NodeRef::default(),
             public_hash: None,
         }
     }
@@ -286,6 +292,113 @@ impl Component for Main {
                     .join(":");
                 self.public_hash = Some(text);
             }
+            Msg::Sign => {
+                let open_text = self.open_text.cast::<web_sys::HtmlInputElement>().unwrap();
+                open_text.click();
+            }
+            Msg::TextFileSelected => {
+                let element = self.open_text.cast::<web_sys::HtmlInputElement>().unwrap();
+
+                if let AppKey::Pair(_, private_key) = &self.key {
+                    if let Some(files) = element.files() {
+                        if let Some(file) = files.get(0) {
+                            let private_key = private_key.clone();
+                            wasm_bindgen_futures::spawn_local(async move {
+                                let data =
+                                    wasm_bindgen_futures::JsFuture::from(file.array_buffer())
+                                        .await
+                                        .unwrap();
+                                let data = js_sys::Uint8Array::new(&data).to_vec();
+                                match String::from_utf8(data) {
+                                    Err(_) => {
+                                        web_sys::window()
+                                            .unwrap()
+                                            .alert_with_message(
+                                                "The provided file is not UTF-8 encoded text.",
+                                            )
+                                            .unwrap();
+                                    }
+                                    Ok(text) => {
+                                        let subtle = subtle();
+                                        let lines: Vec<_> = text.lines().collect();
+                                        match futures::future::join_all(
+                                            lines.iter().map(|line| {
+                                                crypto::sign(&subtle, &private_key, line)
+                                            }),
+                                        )
+                                        .await
+                                        .into_iter()
+                                        .collect::<Result<Vec<_>, _>>()
+                                        {
+                                            Err(err) => {
+                                                web_sys::window()
+                                                    .unwrap()
+                                                    .alert_with_message(
+                                                        &err.unchecked_into::<js_sys::Error>()
+                                                            .to_string()
+                                                            .as_string()
+                                                            .unwrap(),
+                                                    )
+                                                    .unwrap();
+                                            }
+                                            Ok(signed) => {
+                                                let mut data: Vec<u8> = Vec::new();
+                                                {
+                                                    let mut cursor =
+                                                        std::io::Cursor::new(&mut data);
+                                                    let mut zip = ZipWriter::new(&mut cursor);
+                                                    for (idx, entry) in
+                                                        signed.into_iter().enumerate()
+                                                    {
+                                                        let bytes = js_sys::Uint8Array::new(&entry)
+                                                            .to_vec();
+                                                        let mut signed_data = b"SIGN:".to_vec();
+                                                        signed_data.extend_from_slice(&bytes);
+                                                        signed_data.extend_from_slice(
+                                                            lines[idx].as_bytes(),
+                                                        );
+
+                                                        let svg =
+                                                            encode_data(&signed_data).unwrap();
+                                                        zip.start_file(
+                                                            format!("signed_{}.svg", idx + 1),
+                                                            FileOptions::default(),
+                                                        )
+                                                        .unwrap();
+                                                        zip.write_all(svg.as_bytes()).unwrap();
+                                                    }
+                                                    zip.finish().unwrap();
+                                                }
+                                                let buffer =
+                                                    js_sys::Uint8Array::from(data.as_slice());
+                                                let blob = web_sys::Blob::new_with_blob_sequence(
+                                                    &js_sys::Array::of1(&buffer),
+                                                )
+                                                .unwrap();
+                                                let blob_url =
+                                                    Url::create_object_url_with_blob(&blob)
+                                                        .unwrap();
+                                                let a: web_sys::HtmlAnchorElement =
+                                                    web_sys::window()
+                                                        .unwrap()
+                                                        .document()
+                                                        .unwrap()
+                                                        .create_element("A")
+                                                        .unwrap()
+                                                        .unchecked_into();
+                                                a.set_href(&blob_url);
+                                                a.set_download("signed.zip");
+                                                a.click();
+                                                Url::revoke_object_url(&blob_url).unwrap();
+                                            }
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                    }
+                }
+            }
         }
         true
     }
@@ -301,6 +414,7 @@ impl Component for Main {
                     <button onclick=self.link.callback(|_| Msg::GenerateKeyPair) class="mdi-set mdi-briefcase-outline" title="Generate Key Pair"></button>
                     <button onclick=self.link.callback(|_| Msg::ImportKeyPair) class="mdi-set mdi-briefcase-upload" title="Import Key Pair"></button>
                     <button onclick=self.link.callback(|_| Msg::ExportKeyPair) class="mdi-set mdi-briefcase-download" title="Export Key Pair" disabled={ !self.key.is_pair() }></button>
+                    <button onclick=self.link.callback(|_| Msg::Sign) class="mdi-set mdi-feather" title="Batch sign text" disabled={ !self.key.is_pair() }></button>
                     <div class="key_qr" ref=self.qr_key.clone()></div>
                 </header>
                 <div class="hash">
@@ -312,6 +426,7 @@ impl Component for Main {
                 </div>
                 <div id="reader"></div>
                 <input type="file" accept="application/json" ref=self.open_file.clone() onchange=self.link.callback(|_| Msg::KeyPairSelected) multiple=false />
+                <input type="file" accept="text/plain" ref=self.open_text.clone() onchange=self.link.callback(|_| Msg::TextFileSelected) multiple=false />
             </div>
         }
     }

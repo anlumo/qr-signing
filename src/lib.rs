@@ -1,9 +1,7 @@
-#![recursion_limit = "256"]
+#![recursion_limit = "512"]
 
-use js_sys::{Array, Uint8Array};
 use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
-use web_sys::{console, Blob, Url};
+use web_sys::console;
 use yew::prelude::*;
 
 mod html5_qrcode;
@@ -47,48 +45,3 @@ pub fn main_js() -> Result<(), JsValue> {
 fn scanned(text: String) {
     console::log_2(&JsValue::from_str("SCANNED:"), &JsValue::from_str(&text));
 }
-
-// async fn sign_text(text: &str) -> Result<(), JsValue> {
-//     let subtle = web_sys::window()
-//         .unwrap()
-//         .crypto()
-//         .expect("No WebCrypto support found!")
-//         .subtle();
-
-//     if let Some(key_pair) = KEY_PAIR.with(|key_pair| key_pair.borrow().clone()) {
-//         match crypto::sign(&subtle, &key_pair, text).await {
-//             Err(err) => {
-//                 console::error_1(&err);
-//             }
-//             Ok(data) => {
-//                 let mut array = Uint8Array::new(data.as_ref()).to_vec(); // always 132 bytes
-//                 array.extend_from_slice(text.as_bytes()); // append original text
-
-//                 let svg = qr_generator::encode_data(&array).expect("Text too long");
-
-//                 let mut options = web_sys::BlobPropertyBag::new();
-//                 options.type_("image/svg+xml");
-//                 let blob = Blob::new_with_str_sequence_and_options(
-//                     &Array::of1(&JsValue::from_str(&svg)),
-//                     &options,
-//                 )?;
-
-//                 let blob_url = Url::create_object_url_with_blob(&blob)?;
-
-//                 let a: web_sys::HtmlAnchorElement = web_sys::window()
-//                     .unwrap()
-//                     .document()
-//                     .unwrap()
-//                     .create_element("A")
-//                     .unwrap()
-//                     .unchecked_into();
-//                 a.set_href(&blob_url);
-//                 a.set_download("signed_qr.svg");
-//                 a.click();
-
-//                 Url::revoke_object_url(&blob_url)?;
-//             }
-//         }
-//     }
-//     Ok(())
-// }
