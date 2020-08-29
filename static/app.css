@@ -1,0 +1,56 @@
+:root {
+    --color1: #50788C;
+    --color2: #A3C5D6;
+    --color3: #97D6A0;
+    --color4: #8A8554;
+    --color5: #D6CF8B;
+}
+
+body {
+    background-color: var(--color5);
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+header {
+    width: 100%;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: flex-start;
+    background-color: white;
+}
+
+header > * {
+    width: 44px;
+    height: 44px;
+    margin: 10px;
+}
+
+header > button {
+    display: flex;
+    justify-content: center;
+    border: 1px solid var(--color1);
+    background-color: var(--color2);
+}
+
+header > .key_qr.missing {
+    border: 2px dotted var(--color1);
+}
+
+.hash {
+    font-size: 6pt;
+    background-color: white;
+    padding: 0 10px 10px 10px;
+    word-wrap: break-word;
+}
+
+#reader {
+    width: 100%;
+    margin-top: 20px;
+}
+
+input[type="file"] {
+    display: none;
+}

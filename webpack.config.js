@@ -20,7 +20,9 @@ module.exports = {
   plugins: [
     new CopyPlugin({
       patterns: [
-        path.resolve(__dirname, "static")
+        path.resolve(__dirname, "static"),
+        { from: path.resolve(__dirname, "node_modules/@mdi/font/fonts"), to: "fonts" },
+        { from: path.resolve(__dirname, "node_modules/@mdi/font/css"), to: "css" },
       ],
     }),
 

@@ -21,6 +21,9 @@ serde = { version = "1.0", features = ["derive"] }
 js-sys = "0.3"
 wasm-bindgen-futures = "0.4"
 qrcodegen = "1.6"
+yew = "0.17"
+futures = "0.3"
+hmac-sha256 = "0.1"
 
 [dependencies.web-sys]
 version = "0.3"
@@ -40,6 +43,9 @@ features = [
     "Blob",
     "BlobPropertyBag",
     "Url",
+    "File",
+    "FileList",
+    "TextDecoder",
 ]
 
 [target."cfg(debug_assertions)".dependencies]

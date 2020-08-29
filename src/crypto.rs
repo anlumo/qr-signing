@@ -18,8 +18,8 @@ struct EcdsaParams {
     hash: String,
 }
 
-pub async fn generate_keypair(subtle: &SubtleCrypto) -> Result<CryptoKeyPair, JsValue> {
-    let key_pair: CryptoKeyPair = JsFuture::from(
+pub async fn generate_keypair(subtle: &SubtleCrypto) -> Result<(CryptoKey, CryptoKey), JsValue> {
+    let key_pair = JsFuture::from(
         subtle.generate_key_with_object(
             &JsValue::from_serde(&EcKeyGenParams {
                 name: "ECDSA".to_owned(),
@@ -31,32 +31,26 @@ pub async fn generate_keypair(subtle: &SubtleCrypto) -> Result<CryptoKeyPair, Js
             &Array::of2(&JsValue::from_str("sign"), &JsValue::from_str("verify")),
         )?,
     )
-    .await?
-    .unchecked_into();
-
-    Ok(key_pair)
-}
-
-pub async fn export_public_key(
-    subtle: &SubtleCrypto,
-    key_pair: &CryptoKeyPair,
-) -> Result<Object, JsValue> {
+    .await?;
     let public_key: CryptoKey =
         Reflect::get(&key_pair, &JsValue::from_str("publicKey"))?.unchecked_into();
-    let public_key_data = JsFuture::from(subtle.export_key("jwk", &public_key)?).await?;
-
-    Ok(public_key_data.unchecked_into())
-}
-
-pub async fn export_private_key(
-    subtle: &SubtleCrypto,
-    key_pair: &CryptoKeyPair,
-) -> Result<Object, JsValue> {
     let private_key: CryptoKey =
         Reflect::get(&key_pair, &JsValue::from_str("privateKey"))?.unchecked_into();
-    let private_key_data = JsFuture::from(subtle.export_key("jwk", &private_key)?).await?;
 
-    Ok(private_key_data.unchecked_into())
+    Ok((public_key, private_key))
+}
+
+pub async fn export_key(subtle: &SubtleCrypto, key: &CryptoKey) -> Result<Object, JsValue> {
+    let key_data = JsFuture::from(subtle.export_key("jwk", key)?).await?;
+    Ok(key_data.unchecked_into())
+}
+
+pub async fn export_key_raw(
+    subtle: &SubtleCrypto,
+    key: &CryptoKey,
+) -> Result<ArrayBuffer, JsValue> {
+    let key_data = JsFuture::from(subtle.export_key("raw", key)?).await?;
+    Ok(key_data.unchecked_into())
 }
 
 pub async fn sign(
@@ -84,4 +78,48 @@ pub async fn sign(
     .await?;
 
     Ok(signed_bytes.unchecked_into())
+}
+
+pub async fn import_public_key(
+    subtle: &SubtleCrypto,
+    key: &js_sys::Object,
+) -> Result<CryptoKey, JsValue> {
+    wasm_bindgen_futures::JsFuture::from(
+        subtle.import_key_with_object(
+            "jwk",
+            key,
+            JsValue::from_serde(&EcdsaParams {
+                name: "ECDSA".to_owned(),
+                hash: "SHA-256".to_owned(),
+            })
+            .unwrap()
+            .unchecked_ref(),
+            true,
+            &Array::of1(&JsValue::from_str("verify")),
+        )?,
+    )
+    .await
+    .map(|key| key.unchecked_into())
+}
+
+pub async fn import_private_key(
+    subtle: &SubtleCrypto,
+    key: &js_sys::Object,
+) -> Result<CryptoKey, JsValue> {
+    wasm_bindgen_futures::JsFuture::from(
+        subtle.import_key_with_object(
+            "jwk",
+            key,
+            JsValue::from_serde(&EcdsaParams {
+                name: "ECDSA".to_owned(),
+                hash: "SHA-256".to_owned(),
+            })
+            .unwrap()
+            .unchecked_ref(),
+            true,
+            &Array::of1(&JsValue::from_str("sign")),
+        )?,
+    )
+    .await
+    .map(|key| key.unchecked_into())
 }

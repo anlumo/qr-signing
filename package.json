@@ -15,5 +15,7 @@
     "webpack-cli": "^3.3.3",
     "webpack-dev-server": "^3.7.1"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@mdi/font": "^5.5.55"
+  }
 }
