@@ -25,6 +25,7 @@ yew = "0.17"
 futures = "0.3"
 hmac-sha256 = "0.1"
 zip = { version = "0.5", default-features = false }
+uuid = { version = "0.8", features = ["v4", "wasm-bindgen"] }
 
 [dependencies.web-sys]
 version = "0.3"

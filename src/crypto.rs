@@ -2,7 +2,7 @@ use js_sys::{Array, ArrayBuffer, Object, Reflect};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::JsFuture;
-use web_sys::{CryptoKey, CryptoKeyPair, SubtleCrypto};
+use web_sys::{CryptoKey, SubtleCrypto};
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -85,9 +85,32 @@ pub async fn import_public_key(
         subtle.import_key_with_object(
             "jwk",
             key,
-            JsValue::from_serde(&EcdsaParams {
+            JsValue::from_serde(&EcKeyGenParams {
                 name: "ECDSA".to_owned(),
-                hash: "SHA-256".to_owned(),
+                named_curve: "P-521".to_owned(),
+            })
+            .unwrap()
+            .unchecked_ref(),
+            true,
+            &Array::of1(&JsValue::from_str("verify")),
+        )?,
+    )
+    .await
+    .map(|key| key.unchecked_into())
+}
+
+pub async fn import_public_key_raw(
+    subtle: &SubtleCrypto,
+    key: &[u8],
+) -> Result<CryptoKey, JsValue> {
+    let u8array = js_sys::Uint8Array::from(key);
+    wasm_bindgen_futures::JsFuture::from(
+        subtle.import_key_with_object(
+            "raw",
+            &u8array,
+            JsValue::from_serde(&EcKeyGenParams {
+                name: "ECDSA".to_owned(),
+                named_curve: "P-521".to_owned(),
             })
             .unwrap()
             .unchecked_ref(),

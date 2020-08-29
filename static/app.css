@@ -46,11 +46,12 @@ header > .key_qr.missing {
     word-wrap: break-word;
 }
 
-#reader {
+.reader {
     width: 100%;
     margin-top: 20px;
+    background-color: white;
 }
 
-input[type="file"] {
+input.hidden {
     display: none;
 }

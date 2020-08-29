@@ -4,18 +4,11 @@ use wasm_bindgen::prelude::*;
 use web_sys::console;
 use yew::prelude::*;
 
-mod html5_qrcode;
-use html5_qrcode::Html5QrcodeScanner;
 mod app;
 mod crypto;
+mod html5_qrcode;
 mod qr_generator;
-
-thread_local! {
-    static SCANNER: Html5QrcodeScanner = html5_qrcode::Html5QrcodeScanner::new(
-        "reader",
-        true,
-    );
-}
+mod qr_reader;
 
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
@@ -44,4 +37,12 @@ pub fn main_js() -> Result<(), JsValue> {
 
 fn scanned(text: String) {
     console::log_2(&JsValue::from_str("SCANNED:"), &JsValue::from_str(&text));
+}
+
+fn subtle() -> web_sys::SubtleCrypto {
+    let window = web_sys::window().unwrap();
+    window
+        .crypto()
+        .expect("No WebCrypto support found!")
+        .subtle()
 }

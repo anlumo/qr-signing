@@ -1,4 +1,4 @@
-use crate::{crypto, qr_generator::encode_data};
+use crate::{crypto, qr_generator::encode_data, qr_reader::QrReader, subtle};
 use js_sys::Reflect;
 use std::io::Write;
 use wasm_bindgen::{JsCast, JsValue};
@@ -41,17 +41,10 @@ pub enum Msg {
     GenerateKeyPair,
     KeyPairSelected,
     SetKeyPair(CryptoKey, CryptoKey),
+    SetPublicKey(CryptoKey),
     SetPublicHash([u8; 32]),
     Sign,
     TextFileSelected,
-}
-
-fn subtle() -> web_sys::SubtleCrypto {
-    let window = web_sys::window().unwrap();
-    window
-        .crypto()
-        .expect("No WebCrypto support found!")
-        .subtle()
 }
 
 impl Component for Main {
@@ -151,26 +144,12 @@ impl Component for Main {
                 });
             }
             Msg::SetKeyPair(public_key, private_key) => {
-                let local_public_key = public_key.clone();
                 self.key = AppKey::Pair(public_key, private_key);
-                let qr_div = self.qr_key.cast::<web_sys::Element>().unwrap();
-                let link = self.link.clone();
-
-                wasm_bindgen_futures::spawn_local(async move {
-                    let public_key = crypto::export_key_raw(&subtle(), &local_public_key)
-                        .await
-                        .unwrap();
-                    let public_key_u8 = js_sys::Uint8Array::new(public_key.unchecked_ref());
-                    let public_key = public_key_u8.to_vec();
-                    let mut data = Vec::new();
-                    data.extend_from_slice(b"PUB:");
-                    data.extend_from_slice(&public_key);
-
-                    link.send_message(Msg::SetPublicHash(hmac_sha256::Hash::hash(&public_key)));
-
-                    let qr_svg = encode_data(&data).unwrap();
-                    qr_div.set_inner_html(&qr_svg);
-                });
+                self.update_hash_and_qr();
+            }
+            Msg::SetPublicKey(public_key) => {
+                self.key = AppKey::Public(public_key);
+                self.update_hash_and_qr();
             }
             Msg::KeyPairSelected => {
                 let element = self.open_file.cast::<web_sys::HtmlInputElement>().unwrap();
@@ -424,10 +403,38 @@ impl Component for Main {
                         self.public_hash.as_deref().unwrap_or("<no public key loaded>")
                     }
                 </div>
-                <div id="reader"></div>
-                <input type="file" accept="application/json" ref=self.open_file.clone() onchange=self.link.callback(|_| Msg::KeyPairSelected) multiple=false />
-                <input type="file" accept="text/plain" ref=self.open_text.clone() onchange=self.link.callback(|_| Msg::TextFileSelected) multiple=false />
+                <QrReader onpublickey=self.link.callback(|msg: CryptoKey| Msg::SetPublicKey(msg)) />
+                <input class="hidden" type="file" accept="application/json" ref=self.open_file.clone() onchange=self.link.callback(|_| Msg::KeyPairSelected) multiple=false />
+                <input class="hidden" type="file" accept="text/plain" ref=self.open_text.clone() onchange=self.link.callback(|_| Msg::TextFileSelected) multiple=false />
             </div>
         }
+    }
+}
+
+impl Main {
+    fn update_hash_and_qr(&self) {
+        let public_key = match &self.key {
+            AppKey::Pair(public_key, _) => public_key.clone(),
+            AppKey::Public(public_key) => public_key.clone(),
+            AppKey::None => return,
+        };
+        let qr_div = self.qr_key.cast::<web_sys::Element>().unwrap();
+        let link = self.link.clone();
+
+        wasm_bindgen_futures::spawn_local(async move {
+            let public_key = crypto::export_key_raw(&subtle(), &public_key)
+                .await
+                .unwrap();
+            let public_key_u8 = js_sys::Uint8Array::new(public_key.unchecked_ref());
+            let public_key = public_key_u8.to_vec();
+            let mut data = Vec::new();
+            data.extend_from_slice(b"PUB:");
+            data.extend_from_slice(&public_key);
+
+            link.send_message(Msg::SetPublicHash(hmac_sha256::Hash::hash(&public_key)));
+
+            let qr_svg = encode_data(&data).unwrap();
+            qr_div.set_inner_html(&qr_svg);
+        });
     }
 }
