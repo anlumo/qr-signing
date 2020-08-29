@@ -12,11 +12,13 @@ pub struct QrReader {
     scanned_closure: Closure<dyn FnMut(String)>,
     error_closure: Closure<dyn FnMut(JsValue)>,
     onpublickey: Callback<CryptoKey>,
+    public_key: Option<CryptoKey>,
 }
 
 #[derive(Properties, Clone, PartialEq)]
 pub struct Props {
     pub onpublickey: Callback<CryptoKey>,
+    pub public_key: Option<CryptoKey>,
 }
 
 pub enum Msg {
@@ -42,6 +44,7 @@ impl Component for QrReader {
                     as Box<dyn FnMut(JsValue)>,
             ),
             onpublickey: props.onpublickey,
+            public_key: props.public_key,
         }
     }
 
@@ -102,6 +105,50 @@ impl Component for QrReader {
                             }
                         });
                     } else if &binary[0..5] == b"SIGN:" {
+                        if let Some(public_key) = &self.public_key {
+                            let public_key = public_key.clone();
+                            let signature = binary[5..(5 + crypto::SIGNATURE_SIZE)].to_vec();
+                            let data = binary[(5 + crypto::SIGNATURE_SIZE)..].to_vec();
+                            wasm_bindgen_futures::spawn_local(async move {
+                                match crypto::verify(&subtle(), &public_key, &signature, &data)
+                                    .await
+                                {
+                                    Err(err) => {
+                                        web_sys::console::log_2(
+                                            &wasm_bindgen::JsValue::from_str("CRYPTO ERROR"),
+                                            &err,
+                                        );
+                                        web_sys::window()
+                                            .unwrap()
+                                            .alert_with_message(
+                                                &err.unchecked_into::<js_sys::Error>()
+                                                    .to_string()
+                                                    .as_string()
+                                                    .unwrap(),
+                                            )
+                                            .unwrap();
+                                    }
+                                    Ok(flag) => {
+                                        if flag {
+                                            let payload = String::from_utf8(data)
+                                                .unwrap_or_else(|_| "<binary data>".to_owned());
+                                            web_sys::window()
+                                                .unwrap()
+                                                .alert_with_message(&format!(
+                                                    "VERIFIED:\n{}",
+                                                    payload
+                                                ))
+                                                .unwrap();
+                                        } else {
+                                            web_sys::window()
+                                                .unwrap()
+                                                .alert_with_message("FAILED VERIFICATION!")
+                                                .unwrap();
+                                        }
+                                    }
+                                }
+                            });
+                        }
                     }
                 }
             }
@@ -118,7 +165,9 @@ impl Component for QrReader {
         }
     }
 
-    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
+    fn change(&mut self, props: Self::Properties) -> ShouldRender {
+        self.onpublickey = props.onpublickey;
+        self.public_key = props.public_key;
         false
     }
 

@@ -5,6 +5,7 @@ use wasm_bindgen_futures::JsFuture;
 use web_sys::{CryptoKey, SubtleCrypto};
 
 const CURVE: &str = "P-256";
+pub const SIGNATURE_SIZE: usize = 64;
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -144,4 +145,29 @@ pub async fn import_private_key(
     )
     .await
     .map(|key| key.unchecked_into())
+}
+
+pub async fn verify(
+    subtle: &SubtleCrypto,
+    public_key: &CryptoKey,
+    signature: &[u8],
+    data: &[u8],
+) -> Result<bool, JsValue> {
+    let mut signature = signature.to_vec();
+    let mut data = data.to_vec();
+    wasm_bindgen_futures::JsFuture::from(
+        subtle.verify_with_object_and_u8_array_and_u8_array(
+            JsValue::from_serde(&EcdsaParams {
+                name: "ECDSA".to_owned(),
+                hash: "SHA-256".to_owned(),
+            })
+            .unwrap()
+            .unchecked_ref(),
+            public_key,
+            &mut signature,
+            &mut data,
+        )?,
+    )
+    .await
+    .map(|flag| flag.is_truthy())
 }

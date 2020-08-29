@@ -403,7 +403,7 @@ impl Component for Main {
                         self.public_hash.as_deref().unwrap_or("<no public key loaded>")
                     }
                 </div>
-                <QrReader onpublickey=self.link.callback(|msg: CryptoKey| Msg::SetPublicKey(msg)) />
+                <QrReader onpublickey=self.link.callback(|msg: CryptoKey| Msg::SetPublicKey(msg)) public_key={ self.key.public_key() }/>
                 <input class="hidden" type="file" accept="application/json" ref=self.open_file.clone() onchange=self.link.callback(|_| Msg::KeyPairSelected) multiple=false />
                 <input class="hidden" type="file" accept="text/plain" ref=self.open_text.clone() onchange=self.link.callback(|_| Msg::TextFileSelected) multiple=false />
             </div>
