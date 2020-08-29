@@ -14,14 +14,14 @@ enum AppKey {
 }
 
 impl AppKey {
-    fn is_none(&self) -> bool {
-        self == &Self::None
-    }
     fn is_pair(&self) -> bool {
-        if let Self::Pair(_, _) = self {
-            true
-        } else {
-            false
+        matches!(self, Self::Pair(_, _))
+    }
+    fn public_key(&self) -> Option<CryptoKey> {
+        match self {
+            Self::None => None,
+            Self::Public(public_key) => Some(public_key.clone()),
+            Self::Pair(public_key, _) => Some(public_key.clone()),
         }
     }
 }
