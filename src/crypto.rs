@@ -4,6 +4,8 @@ use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{CryptoKey, SubtleCrypto};
 
+const CURVE: &str = "P-256";
+
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct EcKeyGenParams {
@@ -23,7 +25,7 @@ pub async fn generate_keypair(subtle: &SubtleCrypto) -> Result<(CryptoKey, Crypt
         subtle.generate_key_with_object(
             &JsValue::from_serde(&EcKeyGenParams {
                 name: "ECDSA".to_owned(),
-                named_curve: "P-521".to_owned(),
+                named_curve: CURVE.to_owned(),
             })
             .expect("Failed serializing options")
             .into(),
@@ -87,7 +89,7 @@ pub async fn import_public_key(
             key,
             JsValue::from_serde(&EcKeyGenParams {
                 name: "ECDSA".to_owned(),
-                named_curve: "P-521".to_owned(),
+                named_curve: CURVE.to_owned(),
             })
             .unwrap()
             .unchecked_ref(),
@@ -110,7 +112,7 @@ pub async fn import_public_key_raw(
             &u8array,
             JsValue::from_serde(&EcKeyGenParams {
                 name: "ECDSA".to_owned(),
-                named_curve: "P-521".to_owned(),
+                named_curve: CURVE.to_owned(),
             })
             .unwrap()
             .unchecked_ref(),
