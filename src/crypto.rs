@@ -133,9 +133,9 @@ pub async fn import_private_key(
         subtle.import_key_with_object(
             "jwk",
             key,
-            JsValue::from_serde(&EcdsaParams {
+            JsValue::from_serde(&EcKeyGenParams {
                 name: "ECDSA".to_owned(),
-                hash: "SHA-256".to_owned(),
+                named_curve: CURVE.to_owned(),
             })
             .unwrap()
             .unchecked_ref(),
